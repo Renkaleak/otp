@@ -356,6 +356,15 @@ async function pollSMS() {
 /* ================= LONG POLLING TELEGRAM ================= */
 let lastUpdateId = 0;
 async function updateLoop() {
+  // Validasi token dulu sebelum mulai
+  const testRes = await telegramRequest("getMe", {}).catch(e => null);
+  if (!testRes || !testRes.ok) {
+    console.error("❌ [BOT] BOT_TOKEN tidak valid atau tidak bisa konek ke Telegram!");
+    console.error("❌ [BOT] Response:", JSON.stringify(testRes));
+    return; // jangan loop kalau token salah
+  }
+  console.log(`✅ [BOT] Telegram OK — bot: @${testRes.result.username}`);
+
   while (true) {
     try {
       const res = await telegramRequest("getUpdates", {
@@ -363,7 +372,13 @@ async function updateLoop() {
         timeout:         20,
         allowed_updates: ["message"]
       });
-      if (res.ok && res.result) {
+      if (!res.ok) {
+        console.error("[BOT] getUpdates not ok:", JSON.stringify(res));
+        await new Promise(r => setTimeout(r, 5000));
+        continue;
+      }
+      if (res.result && res.result.length > 0) {
+        console.log(`[BOT] ${res.result.length} update masuk`);
         for (const update of res.result) {
           lastUpdateId = update.update_id;
           handleMessage(update.message).catch(e =>
