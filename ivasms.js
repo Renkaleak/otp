@@ -332,19 +332,42 @@ router.get("/raw-sms", async (req, res) => {
   }
 });
 
-// Update cookie via REST (alternatif dari Telegram)
+// Update cookie via REST
+// Bisa kirim full cookie string atau object { xsrf, session }
 router.post("/update-session", express.json(), (req, res) => {
-  const { xsrf, session } = req.body || {};
+  const body = req.body || {};
+
+  // Mode 1: full cookie string { "cookie": "..." }
+  if (body.cookie) {
+    const parsed = {};
+    body.cookie.split(";").forEach(part => {
+      const idx = part.indexOf("=");
+      if (idx === -1) return;
+      const k = part.substring(0, idx).trim();
+      const v = part.substring(idx + 1).trim();
+      if (k) parsed[k] = v;
+    });
+    if (!parsed["XSRF-TOKEN"] || !parsed["ivas_sms_session"]) {
+      return res.status(400).json({
+        error: "XSRF-TOKEN atau ivas_sms_session tidak ditemukan di cookie string"
+      });
+    }
+    Object.assign(COOKIES, parsed);
+    console.log("✅ [IVAS] Cookie diupdate via REST (full string), keys:", Object.keys(parsed).join(", "));
+    return res.json({ success: true, keys: Object.keys(parsed) });
+  }
+
+  // Mode 2: { xsrf, session }
+  const { xsrf, session } = body;
   if (!xsrf || !session) {
     return res.status(400).json({
-      error:   "Required: xsrf dan session",
-      example: { xsrf: "nilai XSRF-TOKEN", session: "nilai ivas_sms_session" }
+      error:   "Kirim { cookie: '...' } untuk full cookie string, atau { xsrf, session } untuk manual",
     });
   }
   COOKIES["XSRF-TOKEN"]       = xsrf;
   COOKIES["ivas_sms_session"] = session;
-  console.log("✅ [IVAS] Cookie diupdate via REST");
-  res.json({ success: true, message: "Cookie berhasil diupdate!" });
+  console.log("✅ [IVAS] Cookie diupdate via REST (xsrf+session)");
+  res.json({ success: true });
 });
 
 // Cek status session
