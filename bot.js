@@ -2,10 +2,10 @@ const https = require("https");
 const zlib  = require("zlib");
 
 /* ================= CONFIG — WAJIB DIISI ================= */
-const BOT_TOKEN        = "ISI_BOT_TOKEN_DISINI";   // dari @BotFather
-const CHAT_ID          = "ISI_CHAT_ID_DISINI";      // chat/group tujuan notif
+const BOT_TOKEN        = "7759700496:AAH9KkZ8As1Ei-uhXE3q1yMdnTkry99EcWA";   // dari @BotFather
+const CHAT_ID          = "-1003456876412";      // chat/group tujuan notif
 const ADMIN_IDS        = [                           // Telegram user_id yang boleh set cookie
-  123456789,   // ganti dengan user_id kamu
+  7442993900,   // ganti dengan user_id kamu
   // 987654321, // tambah admin lain
 ];
 const POLL_INTERVAL_MS = 30_000;                     // cek SMS tiap 30 detik
