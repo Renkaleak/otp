@@ -2,10 +2,10 @@ const https = require("https");
 const zlib  = require("zlib");
 
 /* ================= CONFIG — WAJIB DIISI ================= */
-const BOT_TOKEN        = "7759700496:AAH9KkZ8As1Ei-uhXE3q1yMdnTkry99EcWA";   // dari @BotFather
-const CHAT_ID          = "-1003456876412";      // chat/group tujuan notif
+const BOT_TOKEN        = "ISI_BOT_TOKEN_DISINI";   // dari @BotFather
+const CHAT_ID          = "ISI_CHAT_ID_DISINI";      // chat/group tujuan notif
 const ADMIN_IDS        = [                           // Telegram user_id yang boleh set cookie
-  7442993900,   // ganti dengan user_id kamu
+  123456789,   // ganti dengan user_id kamu
   // 987654321, // tambah admin lain
 ];
 const POLL_INTERVAL_MS = 30_000;                     // cek SMS tiap 30 detik
@@ -14,10 +14,8 @@ const POLL_INTERVAL_MS = 30_000;                     // cek SMS tiap 30 detik
 const BASE_URL   = "https://www.ivasms.com";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36";
 
-let COOKIES = {
-  "XSRF-TOKEN":       "",
-  "ivas_sms_session": ""
-};
+// Simpan SEMUA cookie dari browser (cf_clearance, XSRF-TOKEN, ivas_sms_session, dll)
+let COOKIES = {};
 
 const userState = {}; // track state per admin
 
@@ -30,7 +28,7 @@ function getXsrf() {
   catch { return COOKIES["XSRF-TOKEN"] || ""; }
 }
 
-// Extract XSRF-TOKEN dan ivas_sms_session dari cookie string mentah browser
+// Parse SEMUA cookie dari string mentah browser — simpan semuanya
 function parseCookieString(raw) {
   const result = {};
   raw.split(";").forEach(part => {
@@ -38,7 +36,7 @@ function parseCookieString(raw) {
     if (idx === -1) return;
     const k = part.substring(0, idx).trim();
     const v = part.substring(idx + 1).trim();
-    if (k === "XSRF-TOKEN" || k === "ivas_sms_session") result[k] = v;
+    if (k) result[k] = v; // simpan semua, termasuk cf_clearance
   });
   return result;
 }
@@ -71,7 +69,7 @@ function makeRequest(method, path, body, contentType, extraHeaders = {}) {
           if (ki > -1) {
             const k = sc.substring(0, ki).trim();
             const v = sc.substring(ki + 1).trim();
-            if (k === "XSRF-TOKEN" || k === "ivas_sms_session") COOKIES[k] = v;
+            if (k) COOKIES[k] = v; // update semua cookie dari response
           }
         });
       }
@@ -289,9 +287,9 @@ async function handleMessage(msg) {
       return;
     }
 
-    COOKIES["XSRF-TOKEN"]       = parsed["XSRF-TOKEN"];
-    COOKIES["ivas_sms_session"] = parsed["ivas_sms_session"];
-    console.log(`✅ [BOT] Cookie diupdate via Telegram (admin: ${userId})`);
+    // Simpan SEMUA cookie (termasuk cf_clearance dll)
+    COOKIES = { ...parsed };
+    console.log(`✅ [BOT] Cookie diupdate via Telegram (admin: ${userId}), keys: ${Object.keys(parsed).join(", ")}`);
 
     // Verifikasi langsung
     try {
