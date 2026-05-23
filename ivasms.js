@@ -332,42 +332,48 @@ router.get("/raw-sms", async (req, res) => {
   }
 });
 
-// Update cookie via REST
-// Bisa kirim full cookie string atau object { xsrf, session }
-router.post("/update-session", express.json(), (req, res) => {
-  const body = req.body || {};
+// Update cookie via REST — terima raw cookie string sebagai text/plain
+router.post("/update-session", (req, res) => {
+  let raw = "";
+  req.on("data", chunk => raw += chunk.toString());
+  req.on("end", () => {
+    // Coba parse JSON dulu, fallback ke raw text
+    let cookieStr = raw.trim();
+    try {
+      const json = JSON.parse(cookieStr);
+      cookieStr = json.cookie || json.xsrf || cookieStr;
+      // Mode xsrf+session
+      if (json.xsrf && json.session) {
+        COOKIES["XSRF-TOKEN"]       = json.xsrf;
+        COOKIES["ivas_sms_session"] = json.session;
+        console.log("✅ [IVAS] Cookie diupdate (xsrf+session)");
+        return res.json({ success: true });
+      }
+      if (json.cookie) cookieStr = json.cookie;
+    } catch {}
 
-  // Mode 1: full cookie string { "cookie": "..." }
-  if (body.cookie) {
+    // Parse cookie string
     const parsed = {};
-    body.cookie.split(";").forEach(part => {
+    cookieStr.split(";").forEach(part => {
       const idx = part.indexOf("=");
       if (idx === -1) return;
       const k = part.substring(0, idx).trim();
       const v = part.substring(idx + 1).trim();
       if (k) parsed[k] = v;
     });
+
     if (!parsed["XSRF-TOKEN"] || !parsed["ivas_sms_session"]) {
+      console.error("[IVAS] Cookie tidak valid, keys ditemukan:", Object.keys(parsed).join(", "));
       return res.status(400).json({
-        error: "XSRF-TOKEN atau ivas_sms_session tidak ditemukan di cookie string"
+        error: "XSRF-TOKEN atau ivas_sms_session tidak ditemukan",
+        found: Object.keys(parsed)
       });
     }
-    Object.assign(COOKIES, parsed);
-    console.log("✅ [IVAS] Cookie diupdate via REST (full string), keys:", Object.keys(parsed).join(", "));
-    return res.json({ success: true, keys: Object.keys(parsed) });
-  }
 
-  // Mode 2: { xsrf, session }
-  const { xsrf, session } = body;
-  if (!xsrf || !session) {
-    return res.status(400).json({
-      error:   "Kirim { cookie: '...' } untuk full cookie string, atau { xsrf, session } untuk manual",
-    });
-  }
-  COOKIES["XSRF-TOKEN"]       = xsrf;
-  COOKIES["ivas_sms_session"] = session;
-  console.log("✅ [IVAS] Cookie diupdate via REST (xsrf+session)");
-  res.json({ success: true });
+    Object.assign(COOKIES, parsed);
+    console.log("✅ [IVAS] Cookie diupdate, keys:", Object.keys(parsed).join(", "));
+    res.json({ success: true, keys: Object.keys(parsed) });
+  });
 });
 
 // Cek status session
